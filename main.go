@@ -3,9 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/ethereum/go-ethereum/ethclient"
-)
-
-import (
 	"log"
 )
 
