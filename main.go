@@ -1,12 +1,13 @@
 package main
 
 import (
-	"crypto/ecdsa"
+	"context"
 	"fmt"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"log"
+	"math"
+	"math/big"
 )
 
 var client *ethclient.Client
@@ -20,51 +21,42 @@ func InitNetwork(networkRPC string) {
 	fmt.Println("Connected")
 }
 
-func CreateWallet() (common.Address, *ecdsa.PrivateKey) {
-	generatedPrivateKey, err := crypto.GenerateKey()
+func WalletBalance(address string) (*big.Int, *big.Float) {
+	account := common.HexToAddress(address)
+	balance, err := client.BalanceAt(context.Background(), account, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	//privateKeyBytes := crypto.FromECDSA(generatedPrivateKey)
-	//privateKey := hexutil.Encode(privateKeyBytes)[2:]
-	//fmt.Println(privateKey)
+	floatBalance := new(big.Float)
+	floatBalance.SetString(balance.String())
+	ethValue := new(big.Float).Quo(floatBalance, big.NewFloat(math.Pow10(18)))
 
-	publicKey := generatedPrivateKey.Public()
-	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
-	if !ok {
-		log.Fatal("cannot assert type: publicKey is not of type *ecdsa.PublicKey")
-	}
-
-	address := crypto.PubkeyToAddress(*publicKeyECDSA)
-	return address, generatedPrivateKey
+	return balance, ethValue
 }
 
-func ImportWallet(privateKey string) (common.Address, *ecdsa.PrivateKey) {
-	importedPrivateKey, err := crypto.HexToECDSA(privateKey)
+func WalletBalanceByBlock(address string, block int64) (*big.Int, *big.Float) {
+	account := common.HexToAddress(address)
+	blockNumber := big.NewInt(block)
+	balance, err := client.BalanceAt(context.Background(), account, blockNumber)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	publicKey := importedPrivateKey.Public()
-	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
-	if !ok {
-		log.Fatal("error casting public key to ECDSA")
-	}
+	floatBalance := new(big.Float)
+	floatBalance.SetString(balance.String())
+	ethValue := new(big.Float).Quo(floatBalance, big.NewFloat(math.Pow10(18)))
 
-	address := crypto.PubkeyToAddress(*publicKeyECDSA)
-	return address, importedPrivateKey
+	return balance, ethValue
 }
 
 func main() {
 	avalancheFuji := "https://api.avax-test.network/ext/bc/C/rpc"
 	InitNetwork(avalancheFuji)
 
-	newPublicKey, newPrivateKey := CreateWallet()
-	fmt.Println("New Public Key: ", newPublicKey)
-	fmt.Println("New Private Key: ", newPrivateKey)
+	walletAddress := "0xCd34A18e1553Ff494E8C342453bea8f4a0feBE8d"
+	fmt.Println(WalletBalance(walletAddress))
 
-	importedPublicKey, importedPrivateKey := ImportWallet("4b82b08ab9a64de944fef3d4184e36771dcd31ad8d8c584ce4b353765e692195")
-	fmt.Println("Imported Public Key: ", importedPublicKey)
-	fmt.Println("Imported Private Key: ", importedPrivateKey)
+	fmt.Println(WalletBalanceByBlock(walletAddress, 10956952))
+
 }
